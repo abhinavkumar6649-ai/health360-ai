@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health360™ | Clinical Intelligence & Population Health Analytics</title>
+  <meta name="description" content="Interactive population health intelligence dashboard analyzing cardiovascular, diabetic, and stroke outcomes across clinical cohorts.">
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js 4.4 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- PapaParse for CSV import/export -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- Canvas Confetti for Healthy Risk Milestone -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-container">
+
+    <!-- Sticky Navigation Header -->
+    <header class="header">
+      <div class="brand-wrapper">
+        <div class="brand-icon-box">
+          <i data-lucide="activity"></i>
+        </div>
+        <div>
+          <div class="brand-title">
+            Health360™
+            <span class="brand-badge">Clinical Intelligence</span>
+          </div>
+          <div class="brand-subtitle">Population Health Cohort Analysis & Risk Stratification</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="cohort-counter" id="cohortStatus">
+          <span class="live-indicator"></span>
+          <span>Cohort: <strong id="cohortCount" style="color:var(--text-primary)">2,500</strong> / <span id="cohortTotal">2,500</span> Patients</span>
+        </div>
+
+        <button class="btn-icon" id="themeToggleBtn" title="Toggle Theme (Dark/Light)">
+          <i data-lucide="moon" id="themeIcon"></i>
+        </button>
+
+        <button class="btn btn-secondary" id="importModalBtn">
+          <i data-lucide="upload-cloud"></i>
+          <span>Import CSV</span>
+        </button>
+
+        <button class="btn btn-primary" id="exportDataBtn">
+          <i data-lucide="download"></i>
+          <span>Export Cohort</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Quick Presets Bar -->
+    <section class="presets-bar" id="presetsBar">
+      <span style="font-size: 0.76rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-right:4px;">
+        <i data-lucide="sparkles" style="width:13px; height:13px; display:inline; vertical-align:middle;"></i> Presets:
+      </span>
+      <button class="preset-chip active" data-preset="all">All Patients (2,500)</button>
+      <button class="preset-chip" data-preset="cvd-risk">High Cardiovascular Risk</button>
+      <button class="preset-chip" data-preset="diabetic">Diabetic Cohort</button>
+      <button class="preset-chip" data-preset="stroke-risk">Stroke / Cerebrovascular</button>
+      <button class="preset-chip" data-preset="seniors-multimorbid">Seniors (65+) Comorbidities</button>
+      <button class="preset-chip" data-preset="young-active">Young & Active Baseline</button>
+      <button class="preset-chip" data-preset="smokers-hypertensive">Smokers with Hypertension</button>
+    </section>
+
+    <!-- Interactive Multi-Dimensional Filter Toolbar -->
+    <section class="filter-panel" id="filterPanel">
+      <div class="filter-grid">
+        
+        <!-- Age Slider -->
+        <div class="filter-group">
+          <div class="filter-label">
+            <span>Age Range</span>
+            <span class="range-val" id="ageValDisplay">18 - 85 yrs</span>
+          </div>
+          <div class="range-wrap">
+            <input type="range" class="range-input" id="ageMin" min="18" max="85" value="18">
+            <input type="range" class="range-input" id="ageMax" min="18" max="85" value="85">
+          </div>
+        </div>
+
+        <!-- Sex Filter -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterSex">Biological Sex</label>
+          <select class="filter-select" id="filterSex">
+            <option value="ALL">All Genders</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
+        </div>
+
+        <!-- Region Filter -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterRegion">Geographic Region</label>
+          <select class="filter-select" id="filterRegion">
+            <option value="ALL">All Regions</option>
+            <option value="Central">Central</option>
+            <option value="North">North</option>
+            <option value="South">South</option>
+            <option value="East">East</option>
+            <option value="West">West</option>
+          </select>
+        </div>
+
+        <!-- Alcohol Consumption Filter -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterAlcohol">Alcohol Intake</label>
+          <select class="filter-select" id="filterAlcohol">
+            <option value="ALL">All Consumption Levels</option>
+            <option value="None">None / Abstinent</option>
+            <option value="Occasional">Occasional</option>
+            <option value="Regular">Regular</option>
+            <option value="Not Reported">Not Reported</option>
+          </select>
+        </div>
+
+        <!-- Smoking Filter -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterSmoking">Smoking Status</label>
+          <select class="filter-select" id="filterSmoking">
+            <option value="ALL">All Smoking Statuses</option>
+            <option value="Never">Never Smoked</option>
+            <option value="Former">Former Smoker</option>
+            <option value="Current">Current Smoker</option>
+          </select>
+        </div>
+
+        <!-- Exercise Level -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterExercise">Physical Activity</label>
+          <select class="filter-select" id="filterExercise">
+            <option value="ALL">All Activity Levels</option>
+            <option value="High">High Exercise</option>
+            <option value="Moderate">Moderate Exercise</option>
+            <option value="Low">Low / Sedentary</option>
+          </select>
+        </div>
+
+        <!-- Heart Disease Status -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterHeartDisease">Heart Disease</label>
+          <select class="filter-select" id="filterHeartDisease">
+            <option value="ALL">All Diagnoses</option>
+            <option value="1">Confirmed (Positive)</option>
+            <option value="0">Negative (None)</option>
+          </select>
+        </div>
+
+        <!-- Diabetes Status -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterDiabetes">Diabetes</label>
+          <select class="filter-select" id="filterDiabetes">
+            <option value="ALL">All Diagnoses</option>
+            <option value="1">Diabetic (Positive)</option>
+            <option value="0">Non-Diabetic</option>
+          </select>
+        </div>
+
+        <!-- Stroke Status -->
+        <div class="filter-group">
+          <label class="filter-label" for="filterStroke">Stroke History</label>
+          <select class="filter-select" id="filterStroke">
+            <option value="ALL">All Statuses</option>
+            <option value="1">Positive History</option>
+            <option value="0">No Stroke</option>
+          </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="filter-actions" style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--border-subtle); padding-top:12px; margin-top:4px;">
+          <div style="font-size:0.78rem; color:var(--text-muted); display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <span><i data-lucide="filter" style="width:13px; height:13px; display:inline; vertical-align:middle;"></i> Dynamic Cross-Filtering Active</span>
+            <span id="activeFiltersSummary" style="color:var(--accent-cyan); font-weight:600;">Full Population Active</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-outline-danger" id="resetFiltersBtn">
+              <i data-lucide="rotate-ccw"></i>
+              <span>Reset Filters</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Empty Cohort Alert Banner -->
+    <div class="empty-cohort-banner" id="emptyCohortBanner">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <i data-lucide="alert-triangle" style="width:24px; height:24px; color:var(--accent-amber); flex-shrink:0;"></i>
+        <div>
+          <strong style="color:var(--accent-amber);">No Patient Records Found for Current Filter Combination</strong>
+          <div style="font-size:0.78rem; color:var(--text-secondary); margin-top:2px;">
+            The active filters resulted in a cohort size of 0 patients. Adjust your filter boundaries or click reset to restore the full cohort.
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-secondary" id="emptyResetBtn" style="white-space:nowrap;">
+        <i data-lucide="rotate-ccw"></i>
+        <span>Reset to Full Cohort</span>
+      </button>
+    </div>
+
+
+    <!-- Executive KPI Summary Cards -->
+    <section class="kpi-grid">
+      
+      <!-- KPI 1: Active Cohort -->
+      <div class="kpi-card" style="--card-accent: var(--accent-cyan);">
+        <div class="kpi-header">
+          <span class="kpi-title">Active Cohort</span>
+          <div class="kpi-icon-wrapper"><i data-lucide="users"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiCohort">2,500</div>
+          <span class="kpi-badge" style="background:rgba(6,182,212,0.15); color:var(--accent-cyan);" id="kpiCohortPct">100% of Total</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Target Population Analyzed</span>
+          <span id="kpiGenderSplit">50% M / 50% F</span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Heart Disease Rate -->
+      <div class="kpi-card" style="--card-accent: var(--accent-rose);">
+        <div class="kpi-header">
+          <span class="kpi-title">Heart Disease Prevalence</span>
+          <div class="kpi-icon-wrapper" style="color:var(--accent-rose);"><i data-lucide="heart-pulse"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiHeartRate">--%</div>
+          <span class="kpi-badge" id="kpiHeartBadge" style="background:rgba(244,63,94,0.15); color:var(--accent-rose);">-- Cases</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Cardiovascular morbidity rate</span>
+          <span id="kpiHeartSub">Chest Pain link</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Diabetes Prevalence -->
+      <div class="kpi-card" style="--card-accent: var(--accent-purple);">
+        <div class="kpi-header">
+          <span class="kpi-title">Diabetes Mellitus</span>
+          <div class="kpi-icon-wrapper" style="color:var(--accent-purple);"><i data-lucide="droplet"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiDiabetesRate">--%</div>
+          <span class="kpi-badge" id="kpiDiabetesBadge" style="background:rgba(139,92,246,0.15); color:var(--accent-purple);">-- Cases</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Cohort Mean Glucose:</span>
+          <strong id="kpiMeanGlucose" style="color:var(--accent-purple); font-family:var(--font-mono);">-- mg/dL</strong>
+        </div>
+      </div>
+
+      <!-- KPI 4: Stroke Prevalence -->
+      <div class="kpi-card" style="--card-accent: var(--accent-amber);">
+        <div class="kpi-header">
+          <span class="kpi-title">Stroke Prevalence</span>
+          <div class="kpi-icon-wrapper" style="color:var(--accent-amber);"><i data-lucide="brain"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiStrokeRate">--%</div>
+          <span class="kpi-badge" id="kpiStrokeBadge" style="background:rgba(245,158,11,0.15); color:var(--accent-amber);">-- Cases</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Cerebrovascular risk factor</span>
+          <span id="kpiStrokeSub">High BP core factor</span>
+        </div>
+      </div>
+
+      <!-- KPI 5: Mean Blood Pressure -->
+      <div class="kpi-card" style="--card-accent: var(--accent-blue);">
+        <div class="kpi-header">
+          <span class="kpi-title">Mean Arterial Vitals</span>
+          <div class="kpi-icon-wrapper" style="color:var(--accent-blue);"><i data-lucide="gauge"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiBloodPressure" style="font-size:1.75rem;">-- / --</div>
+          <span class="kpi-badge" style="background:rgba(59,130,246,0.15); color:var(--accent-blue);">mmHg</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Hypertensive Stage 1/2:</span>
+          <strong id="kpiHypertensionPct" style="color:var(--accent-blue);">--%</strong>
+        </div>
+      </div>
+
+      <!-- KPI 6: Mean BMI & Weight Profile -->
+      <div class="kpi-card" style="--card-accent: var(--accent-emerald);">
+        <div class="kpi-header">
+          <span class="kpi-title">Cohort Mean BMI</span>
+          <div class="kpi-icon-wrapper" style="color:var(--accent-emerald);"><i data-lucide="scale"></i></div>
+        </div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpiMeanBmi">--</div>
+          <span class="kpi-badge" id="kpiBmiCategory" style="background:rgba(16,185,129,0.15); color:var(--accent-emerald);">Normal</span>
+        </div>
+        <div class="kpi-footer">
+          <span>Mean Cholesterol:</span>
+          <strong id="kpiMeanChol" style="color:var(--accent-emerald); font-family:var(--font-mono);">-- mg/dL</strong>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Analytics Charts Grid -->
+    <section class="charts-grid">
+      
+      <!-- Chart 1: Disease Burden Across Age Groups & Gender (Span 8) -->
+      <div class="chart-card col-8">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="bar-chart-3" style="color:var(--accent-cyan); width:18px;"></i> Disease Prevalence Across Age Cohorts</h3>
+            <span class="chart-desc">Comparative prevalence of Cardiovascular Disease, Diabetes, and Stroke stratified by age tier</span>
+          </div>
+          <div class="chart-actions">
+            <div class="chart-segmented-control" id="ageChartConditionToggle">
+              <button class="segmented-btn active" data-condition="all">All Combined</button>
+              <button class="segmented-btn" data-condition="heart">Heart</button>
+              <button class="segmented-btn" data-condition="diabetes">Diabetes</button>
+              <button class="segmented-btn" data-condition="stroke">Stroke</button>
+            </div>
+          </div>
+        </div>
+        <div class="canvas-container canvas-container-tall">
+          <canvas id="ageDistributionChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: Clinical Biomarker Scatter Plot (Span 4) -->
+      <div class="chart-card col-4">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="crosshair" style="color:var(--accent-rose); width:18px;"></i> Biomarker Risk Map</h3>
+            <span class="chart-desc">Systolic BP vs Blood Glucose distribution with clinical risk zones</span>
+          </div>
+        </div>
+        <div class="canvas-container canvas-container-tall">
+          <canvas id="biomarkerScatterChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 3: Lifestyle Impact: Smoking & Alcohol (Span 6) -->
+      <div class="chart-card col-6">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="cigarette" style="color:var(--accent-amber); width:18px;"></i> Lifestyle Risk Multipliers</h3>
+            <span class="chart-desc">Heart disease & stroke rates across smoking status and alcohol consumption</span>
+          </div>
+        </div>
+        <div class="canvas-container">
+          <canvas id="lifestyleImpactChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 4: Physical Activity Protection Factor (Span 6) -->
+      <div class="chart-card col-6">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="shield-check" style="color:var(--accent-emerald); width:18px;"></i> Physical Activity Protection Factor</h3>
+            <span class="chart-desc">Prevalence rates and metabolic biomarkers by Exercise Intensity Level</span>
+          </div>
+        </div>
+        <div class="canvas-container">
+          <canvas id="exerciseProtectionChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 5: Symptom Triad Attribution Analysis (Span 7) -->
+      <div class="chart-card col-7">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="stethoscope" style="color:var(--accent-purple); width:18px;"></i> Clinical Symptom Triad & Disease Odds</h3>
+            <span class="chart-desc">Correlation between reporting Chest Pain, Fatigue, and Dizziness with confirmed outcomes</span>
+          </div>
+        </div>
+        <div class="canvas-container">
+          <canvas id="symptomsCorrelationChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 6: Geographic Health Disparities (Span 5) -->
+      <div class="chart-card col-5">
+        <div class="chart-header">
+          <div class="chart-title-area">
+            <h3 class="chart-title"><i data-lucide="map-pin" style="color:var(--accent-blue); width:18px;"></i> Regional Health Disparities</h3>
+            <span class="chart-desc">Condition rates across Central, North, South, East, and West territories</span>
+          </div>
+        </div>
+        <div class="canvas-container">
+          <canvas id="regionalDisparitiesChart"></canvas>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Interactive Clinical Risk Stratification & Predictive Calculator -->
+    <section class="calculator-card" id="riskCalculatorSection">
+      <div class="chart-title-area" style="margin-bottom: 8px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span style="background:linear-gradient(135deg,#06b6d4,#3b82f6); width:28px; height:28px; border-radius:6px; display:inline-flex; align-items:center; justify-content:center; color:#fff;">
+            <i data-lucide="cpu" style="width:16px; height:16px;"></i>
+          </span>
+          <h2 style="font-size:1.15rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">
+            Interactive Cardiometabolic Risk Factor Simulator
+          </h2>
+          <span class="brand-badge" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border-color:rgba(245,158,11,0.3);">Illustrative Educational Heuristic • Non-Diagnostic</span>
+        </div>
+        <span style="font-size:0.78rem; color:var(--text-secondary);">
+          Explore how biometric biomarkers compound in synthetic population data. Demonstrates relative multi-factorial vulnerability dynamics; not a clinical prognosis.
+        </span>
+      </div>
+
+      <div class="calc-layout">
+        
+        <!-- Inputs Form Grid -->
+        <div class="calc-inputs-grid">
+          
+          <div class="calc-field">
+            <label class="calc-label" for="calcAge">Age: <span id="calcAgeVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">55 yrs</span></label>
+            <input type="range" class="range-input" id="calcAge" min="18" max="90" value="55">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcSex">Sex</label>
+            <select class="filter-select" id="calcSex">
+              <option value="Male">Male</option>
+              <option value="Female">Female</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcSystolic">Systolic BP: <span id="calcSystolicVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">130 mmHg</span></label>
+            <input type="range" class="range-input" id="calcSystolic" min="90" max="200" value="130">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcDiastolic">Diastolic BP: <span id="calcDiastolicVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">85 mmHg</span></label>
+            <input type="range" class="range-input" id="calcDiastolic" min="60" max="120" value="85">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcBmi">Body Mass Index (BMI): <span id="calcBmiVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">26.5</span></label>
+            <input type="range" class="range-input" id="calcBmi" min="16.0" max="45.0" step="0.5" value="26.5">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcGlucose">Fasting Glucose: <span id="calcGlucoseVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">105 mg/dL</span></label>
+            <input type="range" class="range-input" id="calcGlucose" min="65" max="250" value="105">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcChol">Cholesterol: <span id="calcCholVal" style="color:var(--accent-cyan); font-family:var(--font-mono); font-weight:700;">200 mg/dL</span></label>
+            <input type="range" class="range-input" id="calcChol" min="110" max="320" value="200">
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcSmoking">Smoking Profile</label>
+            <select class="filter-select" id="calcSmoking">
+              <option value="Never">Never Smoked</option>
+              <option value="Former">Former Smoker</option>
+              <option value="Current">Current Smoker (+35% Risk)</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcExercise">Physical Activity</label>
+            <select class="filter-select" id="calcExercise">
+              <option value="High">High (Cardioprotective)</option>
+              <option value="Moderate" selected>Moderate Exercise</option>
+              <option value="Low">Low / Sedentary (+20% Risk)</option>
+            </select>
+          </div>
+
+          <div class="calc-field">
+            <label class="calc-label" for="calcChestPain">Chest Pain Symptom</label>
+            <select class="filter-select" id="calcChestPain">
+              <option value="No">No Chest Pain</option>
+              <option value="Yes">Reports Chest Pain (High Alert)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Real-Time Risk Results Card -->
+        <div class="calc-results-box">
+          <div class="gauge-wrapper">
+            <span style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); font-weight:600;">Composite Risk Heuristic Index</span>
+            <div class="risk-score-display" id="compositeRiskScore" style="color:var(--accent-amber);">24%</div>
+            <div class="risk-level-tag" id="riskLevelTag" style="background:rgba(245,158,11,0.15); color:var(--accent-amber); border:1px solid rgba(245,158,11,0.3);">
+              Moderate Heuristic Tier
+            </div>
+            
+            <div class="risk-meter">
+              <div class="risk-meter-fill" id="riskMeterFill" style="width:24%;"></div>
+            </div>
+          </div>
+
+          <!-- Sub Risk Metrics Breakdown -->
+          <div class="risk-sub-scores">
+            <div class="risk-sub-card">
+              <div class="risk-sub-title">Cardiovascular Burden</div>
+              <div class="risk-sub-val" id="cvdSubScore" style="color:var(--accent-rose);">18%</div>
+            </div>
+            <div class="risk-sub-card">
+              <div class="risk-sub-title">Glycemic Risk Factor</div>
+              <div class="risk-sub-val" id="diabetesSubScore" style="color:var(--accent-purple);">22%</div>
+            </div>
+            <div class="risk-sub-card">
+              <div class="risk-sub-title">Vascular Vulnerability</div>
+              <div class="risk-sub-val" id="strokeSubScore" style="color:var(--accent-cyan);">11%</div>
+            </div>
+          </div>
+
+          <div class="risk-recommendation" id="calcRecommendation">
+            <strong>Risk Factor Dynamics (Educational Simulation):</strong> Moderate risk profile simulated. Blood pressure and glucose levels indicate borderline vascular burden. Aerobic activity demonstrates protective effects in this model.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Model Transparency, Mathematical Basis & Clinical Limitations Card -->
+      <div class="calc-transparency-card">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; color:var(--accent-cyan); font-weight:700; font-size:0.84rem;">
+          <i data-lucide="info" style="width:16px; height:16px;"></i>
+          <span>Mathematical Structure, Formula Weights & Clinical Limitations</span>
+        </div>
+        <p style="margin-bottom:8px;">
+          <span class="calc-formula-tag">Mathematical Basis</span>
+          This simulator computes a composite heuristic score [2%–95%] via bounded multi-factor weighting: logarithmic age scaling $\beta_{age} \cdot \max(0, \text{age}-30)$, JNC-8 hypertension thresholds (Systolic $\ge 130, 140, 160$ mmHg), ADA fasting glucose stratification ($\ge 100$ pre-diabetic, $\ge 126$ diabetic range), BMI classification penalties, smoking relative multiplier ($1.45\times$), and high-exercise cardioprotective discount ($0.72\times$).
+        </p>
+        <p style="margin-bottom:8px;">
+          <span class="calc-formula-tag">Clinical Limitations</span>
+          <strong>This is not a validated medical prediction model.</strong> True clinical tools (such as the ACC/AHA ASCVD Risk Estimator Plus, Framingham Heart Study 10-Year Score, or UKPDS Risk Engine) require clinical biomarkers not present in this synthetic dataset—specifically HDL-C, treated vs. untreated antihypertensive status, race-specific hazard ratios, and baseline survival calibration $S_0(10)$.
+        </p>
+        <p style="color:var(--accent-amber); font-size:0.75rem;">
+          <strong>Educational Notice:</strong> Output is intended exclusively for interactive population cohort exploration and risk communication demonstration. It does not provide medical diagnoses, treatment recommendations, or individualized clinical prognoses. Consult a licensed medical professional for medical guidance.
+        </p>
+      </div>
+
+    </section>
+
+    <!-- Patient Records Table & Directory Explorer -->
+    <section class="table-card" id="patientExplorerSection">
+      <div class="table-toolbar">
+        <div>
+          <h3 style="font-size: 1.05rem; font-weight:700; color:var(--text-primary); display:flex; align-items:center; gap:8px;">
+            <i data-lucide="database" style="color:var(--accent-cyan); width:18px;"></i>
+            Patient Cohort Directory & Clinical Records
+          </h3>
+          <span style="font-size: 0.76rem; color:var(--text-muted);">
+            Browse, search, sort, and inspect individualized patient biomarker charts & diagnostics
+          </span>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div class="search-box">
+            <i data-lucide="search" style="width:16px; height:16px;"></i>
+            <input type="text" class="search-input" id="tableSearchInput" placeholder="Search by ID, Region, Lifestyle...">
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px;">
+            <label for="pageSizeSelect" style="font-size:0.75rem; color:var(--text-muted); font-weight:600;">Rows:</label>
+            <select class="filter-select" id="pageSizeSelect" style="width:auto; padding:6px 10px; font-size:0.78rem;">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="mobile-scroll-hint">
+        <i data-lucide="arrow-left-right" style="width:14px; height:14px;"></i>
+        <span>Tip: Swipe or scroll horizontally to inspect full clinical telemetry & biomarker columns.</span>
+      </div>
+
+
+      <div class="table-container">
+        <table class="patient-table" id="patientTable">
+          <thead>
+            <tr>
+              <th data-sort="patient_id">Patient ID <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th data-sort="age">Age <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th data-sort="sex">Sex</th>
+              <th data-sort="region">Region</th>
+              <th data-sort="bmi">BMI <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th data-sort="systolic_bp">BP (Sys/Dia) <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th data-sort="glucose_mg_dl">Glucose <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th data-sort="cholesterol_mg_dl">Cholesterol <i data-lucide="chevrons-up-down" style="width:12px; height:12px; display:inline;"></i></th>
+              <th>Lifestyle (Smoke / Act)</th>
+              <th>Symptoms</th>
+              <th>Diagnosed Conditions</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="patientTableBody">
+            <!-- Dynamically generated rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="table-pagination">
+        <div id="paginationInfo">Showing 1 to 25 of 2,500 entries</div>
+        <div class="pagination-controls">
+          <button class="page-btn" id="btnPrevPage" disabled><i data-lucide="chevron-left" style="width:14px; height:14px;"></i> Prev</button>
+          <span id="pageCurrent" style="font-family:var(--font-mono); font-weight:600; padding:0 8px;">1 / 100</span>
+          <button class="page-btn" id="btnNextPage">Next <i data-lucide="chevron-right" style="width:14px; height:14px;"></i></button>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /app-container -->
+
+  <!-- Patient Detail Modal -->
+  <div class="modal-backdrop" id="patientModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div style="background:rgba(6,182,212,0.15); color:var(--accent-cyan); padding:8px; border-radius:8px;">
+            <i data-lucide="user-check"></i>
+          </div>
+          <div>
+            <h3 style="font-size:1.15rem; font-weight:700; color:var(--text-primary);" id="modalPatientId">Patient H36000001</h3>
+            <span style="font-size:0.78rem; color:var(--text-muted);" id="modalPatientDemographics">82 yrs old Male • Central Region</span>
+          </div>
+        </div>
+        <button class="btn-icon" id="modalCloseBtn"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="modal-body">
+        
+        <!-- Vitals Grid -->
+        <div class="patient-modal-grid">
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">Blood Pressure</div>
+            <div class="modal-vital-value" id="modalBp">137 / 92 mmHg</div>
+            <span class="status-pill warning" id="modalBpTag" style="margin-top:4px;">Hypertension Stage 1</span>
+          </div>
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">BMI & Weight</div>
+            <div class="modal-vital-value" id="modalBmi">26.0 kg/m²</div>
+            <span class="status-pill warning" id="modalBmiTag" style="margin-top:4px;">Overweight (68.7 kg)</span>
+          </div>
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">Fasting Glucose</div>
+            <div class="modal-vital-value" id="modalGlucose">115.0 mg/dL</div>
+            <span class="status-pill warning" id="modalGlucoseTag" style="margin-top:4px;">Pre-Diabetic</span>
+          </div>
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">Total Cholesterol</div>
+            <div class="modal-vital-value" id="modalChol">192.0 mg/dL</div>
+            <span class="status-pill success" id="modalCholTag" style="margin-top:4px;">Desirable (<200)</span>
+          </div>
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">Physical Activity</div>
+            <div class="modal-vital-value" id="modalActivity">Low</div>
+            <span class="status-pill danger" id="modalActivityTag" style="margin-top:4px;">Sedentary Risk</span>
+          </div>
+          <div class="modal-vital-card">
+            <div class="modal-vital-label">Smoking & Alcohol</div>
+            <div class="modal-vital-value" id="modalHabits">Never / Occasional</div>
+            <span class="status-pill success" style="margin-top:4px;">Low Toxic Burden</span>
+          </div>
+        </div>
+
+        <!-- Biometric Radar Chart comparing patient against cohort baseline -->
+        <div style="background:var(--bg-surface); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border-subtle); margin-bottom:18px;">
+          <h4 style="font-size:0.85rem; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="radar" style="width:15px; color:var(--accent-cyan);"></i>
+            Biometric Profile vs. Cohort Population Baseline
+          </h4>
+          <div style="height:240px; position:relative;">
+            <canvas id="patientRadarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Clinical Diagnosis & Symptom Tags -->
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Confirmed Medical Conditions</div>
+          <div id="modalConditionsList" style="display:flex; gap:8px; flex-wrap:wrap;">
+            <!-- Condition tags -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV Import Dropzone Modal -->
+  <div class="modal-backdrop" id="importModal">
+    <div class="modal-box" style="max-width:520px;">
+      <div class="modal-header">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <i data-lucide="upload-cloud" style="color:var(--accent-cyan);"></i>
+          <h3 style="font-size:1.1rem; font-weight:700;">Import Healthcare Dataset (CSV)</h3>
+        </div>
+        <button class="btn-icon" id="importCloseBtn"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="dropzone" id="csvDropzone">
+          <i data-lucide="file-spreadsheet" style="width:44px; height:44px; color:var(--accent-cyan); margin-bottom:12px;"></i>
+          <p style="font-weight:700; margin-bottom:4px;">Drag and drop your healthcare CSV file here</p>
+          <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom:14px;">Compatible with Health360 schema and similar patient records</p>
+          <label class="btn btn-primary" style="cursor:pointer;">
+            <span>Browse Files</span>
+            <input type="file" id="csvFileInput" accept=".csv" style="display:none;">
+          </label>
+        </div>
+        <p style="font-size:0.75rem; color:var(--text-secondary); line-height:1.4;">
+          <strong>Tip:</strong> The dashboard already has the complete 2,500 patient Health360 dataset preloaded. You can upload any updated dataset to re-compute all statistics live!
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load bundled dataset -->
+  <script src="data.js"></script>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+
+</body>
+</html>
